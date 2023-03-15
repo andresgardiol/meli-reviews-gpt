@@ -1,0 +1,28 @@
+{
+  "manifest_version": 3,
+  "name": "MercadoLibre Reviews GPT",
+  "version": "1.0",
+  "description": "Generate product reviews using GPT-3 for MercadoLibre",
+  "permissions": [
+    "activeTab",
+    "storage",
+    "scripting"
+  ],
+  "host_permissions": [
+    "https://api.openai.com/*"
+  ],
+  "content_scripts": [
+    {
+      "matches": [
+        "https://www.mercadolibre.com.ar/*"
+      ],
+      "js": [
+        "content.js"
+      ]
+    }
+  ],
+  "options_page": "options.html",
+  "action": {
+    "default_popup": "popup.html"
+  }
+}
