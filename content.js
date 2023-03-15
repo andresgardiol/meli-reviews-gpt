@@ -35,3 +35,29 @@ chrome.storage.sync.get("openaiToken", function (data) {
     })
     .catch((error) => console.log(error));
 });
+
+async function getAllReviews(productId) {
+  const allReviews = [];
+
+  for (let rating = 1; rating <= 5; rating++) {
+    const url = `https://www.mercadolibre.com.ar/noindex/catalog/reviews/${productId}/search?objectId=${productId}&siteId=MLA&isItem=false&rating=${rating}&limit=5&x-is-webview=false`;
+
+    const response = await fetch(url);
+
+    if (!response.ok) {
+      console.log("Error fetching reviews");
+    }
+
+    const data = await response.json();
+
+    allReviews.push(
+      ...data.reviews.map((review) => ({
+        rating: review.rating,
+        title: review.title.text,
+        comment: review.comment.content.text,
+      }))
+    );
+  }
+
+  return allReviews;
+}
