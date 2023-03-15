@@ -2,12 +2,24 @@
 var pageTitle = document.querySelector("h1").innerText;
 
 // Retrieve the user's Open AI API token from the extension's storage
-chrome.storage.sync.get("openaiToken", function (data) {
+chrome.storage.sync.get("openaiToken", async function (data) {
   var openaiToken = data.openaiToken;
 
   // Use the Open AI API to generate a product description
-  var prompt =
-    "Genera una descripcion corta para el siguiente producto: " + pageTitle;
+    const reviews = await getAllReviews();
+    const parsedReviews = reviews.map((review) => `rating: ${review.rating}; título: "${review.title}; comentario: "${review.comment}"`).join("\n");
+
+
+    var prompt =
+    `Crea un resumen a partir de las siguientes reviews del producto. 
+    Analiza cada review y descarta las que no son relevantes para el producto o no son útiles. 
+    El título del producto es '${pageTitle}'. 
+    El resumen debe incluir los puntos más importantes y los pros y contras (si es que se encuentran) del producto. 
+    Escribe en un lenguaje formal.
+    Cada review se encuentra en una nueva línea. 
+    Las reviews son las siguientes:
+    
+    ${parsedReviews}`;
   var requestOptions = {
     method: "POST",
     headers: {
