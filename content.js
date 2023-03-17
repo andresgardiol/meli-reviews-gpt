@@ -2,26 +2,15 @@
 var pageTitle = document.querySelector("h1").innerText;
 
 // Retrieve the user's Open AI API token from the extension's storage
-chrome.storage.sync.get("openaiToken", async function (data) {
+chrome.storage.sync.get(["openaiToken","textToSpeechToken"], async function (data) {
+  console.log(data)
   var openaiToken = data.openaiToken;
-  let productID = "MLA19147042";
+  let productID = getProductID();
   const reviews = await getAllReviews(productID);
-  const parsedReviews = reviews
-    .map(
-      (review) =>
-        `rating: ${review.rating}; título: "${review.title}; comentario: "${review.comment}"`
-    )
-    .join("\n");
+  const parsedReviews = getParsedReviews(reviews);
 
-  var prompt = `Crea un resumen a partir de las siguientes reviews del producto. 
-    Analiza cada review y descarta las que no son relevantes para el producto o no son útiles. 
-    El título del producto es '${pageTitle}'. 
-    El resumen debe incluir los puntos más importantes y los pros y contras (si es que se encuentran) del producto. 
-    Escribe en un lenguaje formal.
-    Cada review se encuentra en una nueva línea. 
-    Las reviews son las siguientes:
-    
-    ${parsedReviews}`;
+  var prompt = getPrompt(parsedReviews);
+
   var requestOptions = {
     method: "POST",
     headers: {
@@ -34,21 +23,95 @@ chrome.storage.sync.get("openaiToken", async function (data) {
       temperature: 0.7,
     }),
   };
-  fetch("https://api.openai.com/v1/chat/completions", requestOptions)
+  const reviewsSummary = await fetch("https://api.openai.com/v1/chat/completions", requestOptions)
     .then((response) => response.json())
     .then((data) => {
-      var productDescription = data.choices[0].message.content;
+      return data.choices[0].message.content;
+    }).catch((error) => {
+      console.log(error);
+      return null;
+    });
 
-      var pageTitleElement = document.querySelector(
+  const pageTitleElement = document.querySelector(
         "section[data-testid='reviews-desktop']"
-      );
-      pageTitleElement.insertAdjacentHTML(
+  );
+  pageTitleElement.insertAdjacentHTML(
         "beforebegin",
-        `<div class="ui-pdp-container__row"><div class="ui-pdp-container__col col-1"><div class="mb-45 ui-box-component-pdp__visible--desktop ui-pdp-collapsable--is-collapsed"><h2 class="ui-pdp-description__title">✨ Resumen de reviews</h2><p class="ui-pdp-description__content">${productDescription}<br></p></div></div></div>`
-      );
-    })
-    .catch((error) => console.log(error));
+        `<div class="ui-pdp-container__row">
+            <div class="ui-pdp-container__col col-1">
+              <div class="mb-45 ui-box-component-pdp__visible--desktop ui-pdp-collapsable--is-collapsed">
+                  <h2 class="ui-pdp-description__title">✨ Resumen de reviews</h2>
+                  <p class="ui-pdp-description__content">${reviewsSummary}<br></p>
+              </div>
+            </div>
+          </div>`
+  );
+
+    // Retrieve the user's text to speech API token from the extension's storage
+    var textToSpeechToken = data.textToSpeechToken;
+    var textToSpeechRequestOptions = {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+            "audioConfig": {
+                "audioEncoding": "MP3",
+                "effectsProfileId": [
+                    "small-bluetooth-speaker-class-device"
+                ],
+                "pitch": 0,
+                "speakingRate": 1.0
+            },
+            "input": {
+                "text": `${reviewsSummary}`
+            },
+            "voice": {
+                "languageCode": "es-US",
+                "name": "es-US-Studio-B"
+            }
+        }),
+    }
+
+    const textToSpeechResponse = await fetch("https://texttospeech.googleapis.com/v1/text:synthesize?key=" + textToSpeechToken, textToSpeechRequestOptions)
+        .then((response) => response.json())
+        .then((data) => {
+            return data.audioContent;
+        })
+        .catch((error) => {
+            console.log(error);
+            return null;
+        });
+    console.log(textToSpeechResponse);
 });
+
+function getProductID() {
+  const actualURL = window.location.href;
+  const id = actualURL.split("/p/")[1].split("#")[0];
+  console.log(id);
+  return id;
+}
+
+function getParsedReviews(reviews) {
+  return reviews
+      .map(
+          (review) =>
+              `rating: ${review.rating}; título: "${review.title}; comentario: "${review.comment}"`
+      )
+      .join("\n");
+}
+
+function getPrompt(parsedReviews) {
+  return `Crea un resumen a partir de las siguientes reviews del producto. 
+    Analiza cada review y descarta las que no son relevantes para el producto o no son útiles. 
+    El título del producto es '${pageTitle}'. 
+    El resumen debe incluir los puntos más importantes y los pros y contras (si es que se encuentran) del producto. 
+    Escribe en un lenguaje formal.
+    Cada review se encuentra en una nueva línea. 
+    Las reviews son las siguientes:
+    
+    ${parsedReviews}`;
+}
 
 async function getAllReviews(productId) {
   const allReviews = [];
