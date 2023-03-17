@@ -2,7 +2,7 @@
 var pageTitle = document.querySelector("h1").innerText;
 
 // Retrieve the user's Open AI API token from the extension's storage
-chrome.storage.sync.get(["openaiToken","textToSpeechToken"], async function (data) {
+chrome.storage.sync.get(["openaiToken", "textToSpeechToken"], async function (data) {
   console.log(data)
   var openaiToken = data.openaiToken;
   let productID = getProductID();
@@ -33,56 +33,59 @@ chrome.storage.sync.get(["openaiToken","textToSpeechToken"], async function (dat
     });
 
   const pageTitleElement = document.querySelector(
-        "section[data-testid='reviews-desktop']"
+    "section[data-testid='reviews-desktop']"
   );
   pageTitleElement.insertAdjacentHTML(
-        "beforebegin",
-        `<div class="ui-pdp-container__row">
+    "beforebegin",
+    `<div class="ui-pdp-container__row">
             <div class="ui-pdp-container__col col-1">
               <div class="mb-45 ui-box-component-pdp__visible--desktop ui-pdp-collapsable--is-collapsed">
                   <h2 class="ui-pdp-description__title">✨ Resumen de reviews</h2>
+                  <button id="listenReviewSummaryButton" type="button" class="andes-button andes-button--loud andes-button--small">
+                  <span class="andes-button__content">Escuchar</span>
+                  </button>
                   <p class="ui-pdp-description__content">${reviewsSummary}<br></p>
               </div>
             </div>
           </div>`
   );
 
-    // Retrieve the user's text to speech API token from the extension's storage
-    var textToSpeechToken = data.textToSpeechToken;
-    var textToSpeechRequestOptions = {
-        method: "POST",
-        headers: {
-            "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-            "audioConfig": {
-                "audioEncoding": "MP3",
-                "effectsProfileId": [
-                    "small-bluetooth-speaker-class-device"
-                ],
-                "pitch": 0,
-                "speakingRate": 1.0
-            },
-            "input": {
-                "text": `${reviewsSummary}`
-            },
-            "voice": {
-                "languageCode": "es-US",
-                "name": "es-US-Studio-B"
-            }
-        }),
-    }
+  // Retrieve the user's text to speech API token from the extension's storage
+  var textToSpeechToken = data.textToSpeechToken;
+  var textToSpeechRequestOptions = {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      "audioConfig": {
+        "audioEncoding": "MP3",
+        "effectsProfileId": [
+          "small-bluetooth-speaker-class-device"
+        ],
+        "pitch": 0,
+        "speakingRate": 1.0
+      },
+      "input": {
+        "text": `${reviewsSummary}`
+      },
+      "voice": {
+        "languageCode": "es-US",
+        "name": "es-US-Studio-B"
+      }
+    }),
+  }
 
-    const textToSpeechResponse = await fetch("https://texttospeech.googleapis.com/v1/text:synthesize?key=" + textToSpeechToken, textToSpeechRequestOptions)
-        .then((response) => response.json())
-        .then((data) => {
-            return data.audioContent;
-        })
-        .catch((error) => {
-            console.log(error);
-            return null;
-        });
-    console.log(textToSpeechResponse);
+  const textToSpeechResponse = await fetch("https://texttospeech.googleapis.com/v1/text:synthesize?key=" + textToSpeechToken, textToSpeechRequestOptions)
+    .then((response) => response.json())
+    .then((data) => {
+      return data.audioContent;
+    })
+    .catch((error) => {
+      console.log(error);
+      return null;
+    });
+  console.log(textToSpeechResponse);
 });
 
 function getProductID() {
@@ -94,11 +97,11 @@ function getProductID() {
 
 function getParsedReviews(reviews) {
   return reviews
-      .map(
-          (review) =>
-              `rating: ${review.rating}; título: "${review.title}; comentario: "${review.comment}"`
-      )
-      .join("\n");
+    .map(
+      (review) =>
+        `rating: ${review.rating}; título: "${review.title}; comentario: "${review.comment}"`
+    )
+    .join("\n");
 }
 
 function getPrompt(parsedReviews) {
